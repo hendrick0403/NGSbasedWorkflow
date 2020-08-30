@@ -1,7 +1,7 @@
 {
     "class": "Workflow",
     "cwlVersion": "sbg:draft-2",
-    "id": "hendrick.san/covid19/rapid-identification-workflow/1",
+    "id": "hendrick.san/covid19/rapid-identification-workflow/6",
     "label": "Rapid Identification Workflow",
     "description": "**Metagenomics WGS analysis -  Centrifuge 1.0.3** is a workflow for analyzing metagenomic samples against a custom reference, allowing researchers to assign reads in their samples to a likely species of origin and quantify each species’ abundance in the sample. Alignment and classification are performed by **Centrifuge classifier** [1]. You can use our default, publicly available references which can be found on the Seven Bridges platform under Public Reference Files, or build your own reference from NCBI using the **Reference Index Creation** workflow or **Centrifuge Build** tool.  Publicly available references are *bacteria_archaea.tar* (which consists of all the complete genomes for bacteria and archaea), *bacteria_archaea_viruses.tar* (which consists of all the complete genomes for bacteria, viruses, and archaea) and *nt.tar.gz* (that consists of all genomes available in NCBI's nt database). Alignment and classification are then performed by **Centrifuge Classifier**. The output is provided as circular trees and bar charts (**HTML report for all samples**), as well as text files that contain both summary metrics per species (**Centrifuge report**) and the classification of individual reads (**Classification results**). There is also **Krona chart report**, an HTML file with circular Krona [2] interactive graphs.\n\nOutput files containing estimated read counts (**Counts table**) and taxonomy information (**Taxonomy table**) are meant to be used in **Microbiome Differential Abundance Analysis**, which analyzes differential abundance of species between samples using **metagenomeSeq** R package [3]. This analysis could be copied from [Data Cruncher Interactive Analyses](https://igor.sbgenomics.com/u/sevenbridges/data-cruncher-interactive-analyses/analysis/cruncher) public project and executed within Jupyter Notebook using our [Data Cruncher](https://docs.sevenbridges.com/docs/run-an-analysis-using-data-cruncher).\n\nThe workflow takes two inputs:\n\n- **Metagenomic samples**, a list of FASTQ or FASTQ.GZ files, with their paired-end and sample ID metadata set. This workflow will produce a report for each sample provided, and it is more efficient to run this with all your samples than to create a batch task (see **Common Issuses** below);\n- A **Centrifuge Reference Index** in TAR format; for large indexes the TAR.GZ format can be used, however, in that case we suggest the user manually set the required memory for Centrifuge classifier job by changing the value for the **Memory per job** parameter (see **Common Issuses** below).\n\nA list of all inputs and parameters with corresponding descriptions can be found at the end of the page.\n\n### Common Use Cases\n\nThis workflow is designed to analyze several metagenomics samples in parallel (scattered by **Sample_ID**). \nThe user should provide FASTQ files for a desired number of samples and one Centrifuge Reference Index file (in TAR or TAR.GZ format). If the samples are host-associated, it is presumed that the reads are already cleaned from the host sequences (as done in [Human Microbiome Project](https://hmpdacc.org/hmp/doc/HumanSequenceRemoval_SOP.pdf)).\n\nA user can upload their own index, or they can use the **Reference Index Creation workflow** from the SBG platform for creating one by downloading reference sequences from NCBI directly. Providing an index with a smaller number of organisms (for example, in cases when the user is just interested in detecting one particular species) can result in mis-calculated abundance of organisms within the sample.\n\nAfter the workflow has successfully completed, it outputs Ccentrifuge results and reports, Kraken-like reports, alignment metrics, circular graphs and bar charts for each sample, and one final HTML report for the whole analysis.\n\n\n### Changes Introduced by Seven Bridges\n\n* **Centrifuge Classifier** option `--met-file` does not work properly, so the basic alignment (classification) metrics are calculated with an in-house script called **SBG Centrifuge-Alignment Metrics**. It outputs the total number of reads, the number of classified and unclassified reads, and those classified to exactly one category.\n\n\n### Common Issues and Important Notes\n\n* The Metadata field **Sample_ID** must be set for all files found on the **Metagenomic samples** input node. This info is important for pairing files and scattering the whole pipeline, as well as for creating reports.\n* The maximum number of samples that can be analyzed with this workflow is limited by the available disk space. Based on our experience, the workflow uses approximately  2.8 times more disk space than the size of all the input files (**Metagenomic samples** and **Centrifuge Reference Index** ). By default, the storage of 1 TB is available for this workflow, which means that maximum overall size of input files should not exceed 350 GB.\n* If the index is in TAR.GZ format, the memory for Centrifuge Classifier should be set manually by changing the default value for the **Memory per job** parameter (in MB). Based on our experience, it would be enough to use twice as much memory as the size of the index file and with an additional 4GB overhead. For example, if the size of the index file is 8GB, the user should use 8 x 2 + 4 = 20GB, that is 20 x 1024 = 20480MB.\n\n### Performance Benchmarking\n\n**Centrifuge Classifier** needs enough memory (based on our experience 4GB more than the size of the index files is suggested) in order to work properly. If the index is in TAR format, the tool will automatically allocate the required memory size. However, if the index is in TAR.GZ, the compression ratio is not always the same, so we suggest in that case the user manually set the required amount of memory necessary for the Centrifuge classifier job by changing the default value for the **Memory per job** parameter. This way, using instances with more memory than needed or task failures would be avoided.\n\nBased on our experience, we chose to manually set the **r4.4xlarge** instance for running the Metagenomics WGS analysis workflow, because it has the most appropriate ratio of CPU cores to RAM for Centrifuge Classifier and a good cost-to-value ratio. The instance could be changed by the user if necessary. To find out how to change the instance, please refer to the [documentation](https://docs.sevenbridges.com/docs/set-computation-instances#section-set-the-instance-type-for-a-workflow). \n\nIn the following table you can find estimates of **Metagenomics WGS analysis - Centrifuge 1.0.3** running time and cost.  *Cost can be significantly reduced by using **spot instances**. Visit the [knowledge center](https://docs.sevenbridges.com/docs/about-spot-instances) for more details.*  \n\n| Experiment type | Input size | Duration | Cost | Instance (AWS)\n| --- | --- | --- | --- | --- |\n|Bacteria index, one throat sample|Index 13 GB, reads SRS013948 throat sample 2 x 3.8 GB| 26m| $ 0.59 | r4.4xlarge|\n|p_h_v.tar index, 17 samples (34 fastq files)|Index 6.9 GB, FASTQ files ranging from 130 MB up to 3.8 GB| 1h 1m| $ 1.25 | r4.4xlarge|\n|Large index file - nt.tar.gz, one throat sample|Index 63.9 GB zipped, reads SRS013948 throat sample 2 x 3.8 GB | 1h 32m | $ 3.4 | r4.8xlarge|\n\n\n### API Python Implementation\nThe workflow's draft task can also be submitted via the **API**. In order to learn how to get your **Authentication token** and **API endpoint** for the corresponding platform visit our [documentation](https://github.com/sbg/sevenbridges-python#authentication-and-configuration).\n\n```python\nfrom sevenbridges import Api\n\nauthentication_token, api_endpoint = \"enter_your_token\", \"enter_api_endpoint\"\napi = Api(token=authentication_token, url=api_endpoint)\n# Get project_id/workflow_id from your address bar. Example: https://igor.sbgenomics.com/u/your_username/project/workflow\nproject_id, workflow_id = \"your_username/project\", \"your_username/project/workflow\"\n# Get file names from files in your project. Names of the files in this example are fictious.\ninputs = {\n    \"centrifuge_index_archive \": api.files.query(project=project_id, names=['bacteria.tar'])[0],\n    \"fastq_list\": list(api.files.query(project=project_id, names=['sample1.pe_1.fastq', \n                                                             'sample1.pe_2.fastq']))\n}\ntask = api.tasks.create(name='Metagenomics WGS Analysis - API Example', project=project_id, app=workflow_id, inputs=inputs, run=True)\n```\nInstructions for installing and configuring the API Python client, are provided on [github](https://github.com/sbg/sevenbridges-python#installation). For more information about using the API Python client, consult [sevenbridges-python documentation](http://sevenbridges-python.readthedocs.io/en/latest/). **More examples** are available [here](https://github.com/sbg/okAPI).\n\nAdditionally, [API R](https://github.com/sbg/sevenbridges-r) and [API Java](https://github.com/sbg/sevenbridges-java) clients are available. To learn more about using these API clients please refer to the [API R client documentation](https://sbg.github.io/sevenbridges-r/), and [API Java client documentation](https://docs.sevenbridges.com/docs/java-library-quickstart).\n\n### References\n\n[1] [Centrifuge home page - manual](http://www.ccb.jhu.edu/software/centrifuge/manual.shtml)\n[2] [Krona hierarchical graphs](https://www.google.com/url?q=https://github.com/marbl/Krona/wiki&sa=D&source=hangouts&ust=1527254314760000&usg=AFQjCNGqbHlwzXvtqwi96JJfVSltx2fXrw)  \n[3] [MetagenomeSeq home page](https://bioconductor.org/packages/release/bioc/html/metagenomeSeq.html)",
     "$namespaces": {
@@ -474,8 +474,8 @@
             "description": "Only download the specified taxonomy IDs, comma separated. Default: any.",
             "id": "#taxids",
             "doc": "Only download the specified taxonomy IDs, comma separated. Default: any.",
-            "sbg:x": -276.9395751953125,
-            "sbg:y": 188.80758666992188,
+            "sbg:x": -273.9319763183594,
+            "sbg:y": 96.6802749633789,
             "sbg:includeInPorts": true
         },
         {
@@ -504,8 +504,8 @@
             "description": "What domain to download. One or more of bacteria, viral, archaea, fungi, protozoa, invertebrate, plant, vertebrate_mammalian, vertebrate_other.",
             "id": "#domain",
             "doc": "What domain to download. One or more of bacteria, viral, archaea, fungi, protozoa, invertebrate, plant, vertebrate_mammalian, vertebrate_other.",
-            "sbg:x": -277.7135925292969,
-            "sbg:y": 359.94866943359375,
+            "sbg:x": -277,
+            "sbg:y": 373.4421691894531,
             "sbg:includeInPorts": true
         },
         {
@@ -516,16 +516,10 @@
             "label": "Refseq category",
             "description": "Only download genomes in the specified refseq category. Default: any.",
             "id": "#refseq_category",
-            "doc": "Only download genomes in the specified refseq category. Default: any."
-        },
-        {
-            "type": [
-                "string"
-            ],
-            "label": "Index base name",
-            "description": "The basename of the index files to write. By default, centrifuge-build writes files named NAME.1.cf, NAME.2.cf, and NAME.3.cf, where NAME is <cf_base>.",
-            "id": "#basename",
-            "doc": "The basename of the index files to write. By default, centrifuge-build writes files named NAME.1.cf, NAME.2.cf, and NAME.3.cf, where NAME is <cf_base>."
+            "doc": "Only download genomes in the specified refseq category. Default: any.",
+            "sbg:x": -273.80950927734375,
+            "sbg:y": 231.8095245361328,
+            "sbg:includeInPorts": true
         }
     ],
     "outputs": [
@@ -2253,7 +2247,7 @@
                 },
                 {
                     "id": "#centrifuge_build.basename",
-                    "source": "#basename"
+                    "default": "index"
                 }
             ],
             "outputs": [
@@ -2886,8 +2880,8 @@
                 "sbg:content_hash": "a23c3c2416ac93a90db95dc1cac88469ac856a68d9ec06c7245643bc3701a54bd"
             },
             "label": "Centrifuge Build",
-            "sbg:x": 346.7430419921875,
-            "sbg:y": 140.51388549804688
+            "sbg:x": 334.1836853027344,
+            "sbg:y": 138.68707275390625
         },
         {
             "id": "#Centrifuge_Download___taxonomy",
@@ -4085,6 +4079,24 @@
             "sbg:modifiedBy": "hendrick.san",
             "sbg:modifiedOn": 1596457618,
             "sbg:revisionNotes": ""
+        },
+        {
+            "sbg:revision": 4,
+            "sbg:modifiedBy": "hendrick.san",
+            "sbg:modifiedOn": 1598696534,
+            "sbg:revisionNotes": "with all input as port"
+        },
+        {
+            "sbg:revision": 5,
+            "sbg:modifiedBy": "hendrick.san",
+            "sbg:modifiedOn": 1598771097,
+            "sbg:revisionNotes": "workflow with all parameter"
+        },
+        {
+            "sbg:revision": 6,
+            "sbg:modifiedBy": "hendrick.san",
+            "sbg:modifiedOn": 1598771247,
+            "sbg:revisionNotes": "renew"
         }
     ],
     "sbg:categories": [
@@ -4105,10 +4117,10 @@
     "sbg:appVersion": [
         "sbg:draft-2"
     ],
-    "sbg:id": "hendrick.san/covid19/rapid-identification-workflow/1",
-    "sbg:revision": 1,
-    "sbg:revisionNotes": "Modified by mine",
-    "sbg:modifiedOn": 1594805002,
+    "sbg:id": "hendrick.san/covid19/rapid-identification-workflow/6",
+    "sbg:revision": 6,
+    "sbg:revisionNotes": "renew",
+    "sbg:modifiedOn": 1598771247,
     "sbg:modifiedBy": "hendrick.san",
     "sbg:createdOn": 1594797894,
     "sbg:createdBy": "hendrick.san",
@@ -4118,7 +4130,7 @@
     "sbg:contributors": [
         "hendrick.san"
     ],
-    "sbg:latestRevision": 3,
+    "sbg:latestRevision": 6,
     "sbg:publisher": "sbg",
-    "sbg:content_hash": "a000145f8172b1cdf6862cc5611675bd1a4a456f74f2bf002bbc6b7ae0206fbaf"
+    "sbg:content_hash": "a1db55464c1e34a1d6ec1fa5ec9b78390e0ea76a98138c046864713dfa25f3f0e"
 }
