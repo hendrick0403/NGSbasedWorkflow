@@ -1,28 +1,13 @@
 {
     "class": "Workflow",
     "cwlVersion": "sbg:draft-2",
-    "id": "hendrick.san/covid19/rapid-identification-workflow/6",
+    "id": "hendrick.san/covid19/rapid-identification-workflow/8",
     "label": "Rapid Identification Workflow",
     "description": "**Metagenomics WGS analysis -  Centrifuge 1.0.3** is a workflow for analyzing metagenomic samples against a custom reference, allowing researchers to assign reads in their samples to a likely species of origin and quantify each species’ abundance in the sample. Alignment and classification are performed by **Centrifuge classifier** [1]. You can use our default, publicly available references which can be found on the Seven Bridges platform under Public Reference Files, or build your own reference from NCBI using the **Reference Index Creation** workflow or **Centrifuge Build** tool.  Publicly available references are *bacteria_archaea.tar* (which consists of all the complete genomes for bacteria and archaea), *bacteria_archaea_viruses.tar* (which consists of all the complete genomes for bacteria, viruses, and archaea) and *nt.tar.gz* (that consists of all genomes available in NCBI's nt database). Alignment and classification are then performed by **Centrifuge Classifier**. The output is provided as circular trees and bar charts (**HTML report for all samples**), as well as text files that contain both summary metrics per species (**Centrifuge report**) and the classification of individual reads (**Classification results**). There is also **Krona chart report**, an HTML file with circular Krona [2] interactive graphs.\n\nOutput files containing estimated read counts (**Counts table**) and taxonomy information (**Taxonomy table**) are meant to be used in **Microbiome Differential Abundance Analysis**, which analyzes differential abundance of species between samples using **metagenomeSeq** R package [3]. This analysis could be copied from [Data Cruncher Interactive Analyses](https://igor.sbgenomics.com/u/sevenbridges/data-cruncher-interactive-analyses/analysis/cruncher) public project and executed within Jupyter Notebook using our [Data Cruncher](https://docs.sevenbridges.com/docs/run-an-analysis-using-data-cruncher).\n\nThe workflow takes two inputs:\n\n- **Metagenomic samples**, a list of FASTQ or FASTQ.GZ files, with their paired-end and sample ID metadata set. This workflow will produce a report for each sample provided, and it is more efficient to run this with all your samples than to create a batch task (see **Common Issuses** below);\n- A **Centrifuge Reference Index** in TAR format; for large indexes the TAR.GZ format can be used, however, in that case we suggest the user manually set the required memory for Centrifuge classifier job by changing the value for the **Memory per job** parameter (see **Common Issuses** below).\n\nA list of all inputs and parameters with corresponding descriptions can be found at the end of the page.\n\n### Common Use Cases\n\nThis workflow is designed to analyze several metagenomics samples in parallel (scattered by **Sample_ID**). \nThe user should provide FASTQ files for a desired number of samples and one Centrifuge Reference Index file (in TAR or TAR.GZ format). If the samples are host-associated, it is presumed that the reads are already cleaned from the host sequences (as done in [Human Microbiome Project](https://hmpdacc.org/hmp/doc/HumanSequenceRemoval_SOP.pdf)).\n\nA user can upload their own index, or they can use the **Reference Index Creation workflow** from the SBG platform for creating one by downloading reference sequences from NCBI directly. Providing an index with a smaller number of organisms (for example, in cases when the user is just interested in detecting one particular species) can result in mis-calculated abundance of organisms within the sample.\n\nAfter the workflow has successfully completed, it outputs Ccentrifuge results and reports, Kraken-like reports, alignment metrics, circular graphs and bar charts for each sample, and one final HTML report for the whole analysis.\n\n\n### Changes Introduced by Seven Bridges\n\n* **Centrifuge Classifier** option `--met-file` does not work properly, so the basic alignment (classification) metrics are calculated with an in-house script called **SBG Centrifuge-Alignment Metrics**. It outputs the total number of reads, the number of classified and unclassified reads, and those classified to exactly one category.\n\n\n### Common Issues and Important Notes\n\n* The Metadata field **Sample_ID** must be set for all files found on the **Metagenomic samples** input node. This info is important for pairing files and scattering the whole pipeline, as well as for creating reports.\n* The maximum number of samples that can be analyzed with this workflow is limited by the available disk space. Based on our experience, the workflow uses approximately  2.8 times more disk space than the size of all the input files (**Metagenomic samples** and **Centrifuge Reference Index** ). By default, the storage of 1 TB is available for this workflow, which means that maximum overall size of input files should not exceed 350 GB.\n* If the index is in TAR.GZ format, the memory for Centrifuge Classifier should be set manually by changing the default value for the **Memory per job** parameter (in MB). Based on our experience, it would be enough to use twice as much memory as the size of the index file and with an additional 4GB overhead. For example, if the size of the index file is 8GB, the user should use 8 x 2 + 4 = 20GB, that is 20 x 1024 = 20480MB.\n\n### Performance Benchmarking\n\n**Centrifuge Classifier** needs enough memory (based on our experience 4GB more than the size of the index files is suggested) in order to work properly. If the index is in TAR format, the tool will automatically allocate the required memory size. However, if the index is in TAR.GZ, the compression ratio is not always the same, so we suggest in that case the user manually set the required amount of memory necessary for the Centrifuge classifier job by changing the default value for the **Memory per job** parameter. This way, using instances with more memory than needed or task failures would be avoided.\n\nBased on our experience, we chose to manually set the **r4.4xlarge** instance for running the Metagenomics WGS analysis workflow, because it has the most appropriate ratio of CPU cores to RAM for Centrifuge Classifier and a good cost-to-value ratio. The instance could be changed by the user if necessary. To find out how to change the instance, please refer to the [documentation](https://docs.sevenbridges.com/docs/set-computation-instances#section-set-the-instance-type-for-a-workflow). \n\nIn the following table you can find estimates of **Metagenomics WGS analysis - Centrifuge 1.0.3** running time and cost.  *Cost can be significantly reduced by using **spot instances**. Visit the [knowledge center](https://docs.sevenbridges.com/docs/about-spot-instances) for more details.*  \n\n| Experiment type | Input size | Duration | Cost | Instance (AWS)\n| --- | --- | --- | --- | --- |\n|Bacteria index, one throat sample|Index 13 GB, reads SRS013948 throat sample 2 x 3.8 GB| 26m| $ 0.59 | r4.4xlarge|\n|p_h_v.tar index, 17 samples (34 fastq files)|Index 6.9 GB, FASTQ files ranging from 130 MB up to 3.8 GB| 1h 1m| $ 1.25 | r4.4xlarge|\n|Large index file - nt.tar.gz, one throat sample|Index 63.9 GB zipped, reads SRS013948 throat sample 2 x 3.8 GB | 1h 32m | $ 3.4 | r4.8xlarge|\n\n\n### API Python Implementation\nThe workflow's draft task can also be submitted via the **API**. In order to learn how to get your **Authentication token** and **API endpoint** for the corresponding platform visit our [documentation](https://github.com/sbg/sevenbridges-python#authentication-and-configuration).\n\n```python\nfrom sevenbridges import Api\n\nauthentication_token, api_endpoint = \"enter_your_token\", \"enter_api_endpoint\"\napi = Api(token=authentication_token, url=api_endpoint)\n# Get project_id/workflow_id from your address bar. Example: https://igor.sbgenomics.com/u/your_username/project/workflow\nproject_id, workflow_id = \"your_username/project\", \"your_username/project/workflow\"\n# Get file names from files in your project. Names of the files in this example are fictious.\ninputs = {\n    \"centrifuge_index_archive \": api.files.query(project=project_id, names=['bacteria.tar'])[0],\n    \"fastq_list\": list(api.files.query(project=project_id, names=['sample1.pe_1.fastq', \n                                                             'sample1.pe_2.fastq']))\n}\ntask = api.tasks.create(name='Metagenomics WGS Analysis - API Example', project=project_id, app=workflow_id, inputs=inputs, run=True)\n```\nInstructions for installing and configuring the API Python client, are provided on [github](https://github.com/sbg/sevenbridges-python#installation). For more information about using the API Python client, consult [sevenbridges-python documentation](http://sevenbridges-python.readthedocs.io/en/latest/). **More examples** are available [here](https://github.com/sbg/okAPI).\n\nAdditionally, [API R](https://github.com/sbg/sevenbridges-r) and [API Java](https://github.com/sbg/sevenbridges-java) clients are available. To learn more about using these API clients please refer to the [API R client documentation](https://sbg.github.io/sevenbridges-r/), and [API Java client documentation](https://docs.sevenbridges.com/docs/java-library-quickstart).\n\n### References\n\n[1] [Centrifuge home page - manual](http://www.ccb.jhu.edu/software/centrifuge/manual.shtml)\n[2] [Krona hierarchical graphs](https://www.google.com/url?q=https://github.com/marbl/Krona/wiki&sa=D&source=hangouts&ust=1527254314760000&usg=AFQjCNGqbHlwzXvtqwi96JJfVSltx2fXrw)  \n[3] [MetagenomeSeq home page](https://bioconductor.org/packages/release/bioc/html/metagenomeSeq.html)",
     "$namespaces": {
         "sbg": "https://sevenbridges.com"
     },
     "inputs": [
-        {
-            "type": [
-                {
-                    "type": "array",
-                    "items": "File"
-                }
-            ],
-            "label": "Metagenomic samples",
-            "description": "List of FASTQ or FASTQ.GZ files, labelled with appropriate Sample_ID.",
-            "sbg:fileTypes": "FASTQ, FASTQ.GZ, FQ, FQ.GZ",
-            "id": "#fastq",
-            "sbg:x": -270.35577392578125,
-            "sbg:y": -108.28845977783203,
-            "sbg:includeInPorts": true
-        },
         {
             "type": [
                 "null",
@@ -520,6 +505,22 @@
             "sbg:x": -273.80950927734375,
             "sbg:y": 231.8095245361328,
             "sbg:includeInPorts": true
+        },
+        {
+            "type": [
+                {
+                    "type": "array",
+                    "items": "File"
+                }
+            ],
+            "label": "Metagenomic samples",
+            "description": "List of the FASTQ files with properly set metadata fileds.",
+            "sbg:fileTypes": "FASTQ, FQ, FASTQ.GZ, FQ.GZ",
+            "id": "#fastq_list",
+            "doc": "List of the FASTQ files with properly set metadata fileds.",
+            "sbg:x": -271.1308288574219,
+            "sbg:y": -110.95787048339844,
+            "sbg:includeInPorts": true
         }
     ],
     "outputs": [
@@ -536,310 +537,12 @@
             ],
             "sbg:fileTypes": "TSV",
             "required": false,
-            "sbg:x": 735.8681030273438,
-            "sbg:y": -57.90277862548828,
+            "sbg:x": 765.506103515625,
+            "sbg:y": -64.8891372680664,
             "sbg:includeInPorts": true
         }
     ],
     "steps": [
-        {
-            "id": "#SBG_FASTQ_Quality_Adjuster",
-            "inputs": [
-                {
-                    "id": "#SBG_FASTQ_Quality_Adjuster.fastq",
-                    "source": "#fastq"
-                }
-            ],
-            "outputs": [
-                {
-                    "id": "#SBG_FASTQ_Quality_Adjuster.result"
-                }
-            ],
-            "run": {
-                "cwlVersion": "sbg:draft-2",
-                "class": "CommandLineTool",
-                "id": "h-bb060756/h-a0440967/h-5c43f89a/0",
-                "label": "SBG FASTQ Quality Adjuster",
-                "description": "This app detects quality score format used in input FASTQ file. FASTQ quality score is then converted to standard Sanger quality score if conversion is required. It is basically a compact merged version of \"SBG Fastq Quality Detector\" and \"SBG Fastq Quality Converter\", created to speed up the execution of pipelines. Supported source formats are: Solexa, Illumina 1.3, Illumina 1.5 and Illumina 1.8.",
-                "baseCommand": [
-                    {
-                        "class": "Expression",
-                        "script": "{\n  qscale = \"to be detected\"\n  \n  if ($job.inputs.fastq.metadata)\n      if ($job.inputs.fastq.metadata[\"quality_scale\"])\n      qscale = $job.inputs.fastq.metadata[\"quality_scale\"]  \n  \n  if ($job.inputs.used_quality_scale)\n    if ($job.inputs.used_quality_scale != null) \n      qscale = $job.inputs.used_quality_scale\n  \n  \n  if (qscale == \"sanger\" || qscale == \"illumina18\" ) \n  {// no conversion\n\treturn \"echo No conversion\"\n  }\n  else\n  {\n    return \"python sbg_fastq_quality_scale_adjuster.py\"\n  }\n}",
-                        "engine": "#cwl-js-engine"
-                    }
-                ],
-                "inputs": [
-                    {
-                        "sbg:category": "Input",
-                        "type": [
-                            "null",
-                            {
-                                "type": "enum",
-                                "symbols": [
-                                    "sanger",
-                                    "illumina18",
-                                    "illumina13",
-                                    "illumina15",
-                                    "solexa"
-                                ],
-                                "name": "used_quality_scale"
-                            }
-                        ],
-                        "label": "Used quality scale",
-                        "description": "Used quality scale of FASTQ reads.",
-                        "id": "#used_quality_scale"
-                    },
-                    {
-                        "sbg:toolDefaultValue": "1",
-                        "sbg:stageInput": null,
-                        "sbg:category": "Execution",
-                        "type": [
-                            "null",
-                            "int"
-                        ],
-                        "label": "Total memory [GB]",
-                        "description": "Total memory in GB.",
-                        "id": "#total_memory"
-                    },
-                    {
-                        "required": true,
-                        "sbg:stageInput": "link",
-                        "sbg:category": "Input",
-                        "type": [
-                            "File"
-                        ],
-                        "inputBinding": {
-                            "position": 1,
-                            "separate": true,
-                            "valueFrom": {
-                                "class": "Expression",
-                                "script": "{\n  qscale = \"to be detected\"\n  \n  if ($job.inputs.fastq.metadata)\n      if ($job.inputs.fastq.metadata[\"quality_scale\"])\n      qscale = $job.inputs.fastq.metadata[\"quality_scale\"]  \n  \n  if ($job.inputs.used_quality_scale)\n    if ($job.inputs.used_quality_scale != null) \n      qscale = $job.inputs.used_quality_scale\n  \n      \n  if (qscale == \"sanger\" || qscale == \"illumina18\" )   {\n    return \"\"\n  }\n  else\n  {\n    return \"--fastq \" + $job.inputs.fastq.path\n  }\n}",
-                                "engine": "#cwl-js-engine"
-                            },
-                            "sbg:cmdInclude": true
-                        },
-                        "label": "Fastq file",
-                        "description": "Input FASTQ file.",
-                        "sbg:fileTypes": "FASTQ, FASTQ.GZ, FQ, FQ.GZ",
-                        "id": "#fastq"
-                    }
-                ],
-                "outputs": [
-                    {
-                        "type": [
-                            "null",
-                            "File"
-                        ],
-                        "label": "Result",
-                        "description": "Resulting file in FASTQ format.",
-                        "sbg:fileTypes": "FASTQ",
-                        "outputBinding": {
-                            "glob": {
-                                "class": "Expression",
-                                "script": "{\n\n  qscale = \"to be detected\"\n  \n  if ($job.inputs.fastq.metadata)\n      if ($job.inputs.fastq.metadata[\"quality_scale\"])\n      qscale = $job.inputs.fastq.metadata[\"quality_scale\"]  \n  \n  if ($job.inputs.used_quality_scale)\n    if ($job.inputs.used_quality_scale != null) \n      qscale = $job.inputs.used_quality_scale\n  \n      \n  if (qscale == \"sanger\" || qscale == \"illumina18\" ) \n  {\n    return $job.inputs.fastq.path.replace(/^.*[\\\\\\/]/, '')\n  }\n  else\n  {\n\tfile = $job.inputs.fastq.path\n\tfile_split = file.split('.')\n\tbasename = file_split\n  \tif (basename.length > 1)\n    {\n      l_ext = basename.splice(basename.length-1)\n      if (l_ext == 'gz')\n      {\n        basename = basename.slice(0, basename.length-1)\n      }\n    }\n \tretval = basename.concat('std.fastq')\n\treturn retval.join('.').replace(/^.*[\\\\\\/]/, '') + \"*\"\n  }\n}",
-                                "engine": "#cwl-js-engine"
-                            },
-                            "sbg:metadata": {
-                                "Quality scale": "sanger"
-                            },
-                            "sbg:inheritMetadataFrom": "#fastq"
-                        },
-                        "id": "#result"
-                    }
-                ],
-                "requirements": [
-                    {
-                        "class": "ExpressionEngineRequirement",
-                        "requirements": [
-                            {
-                                "class": "DockerRequirement",
-                                "dockerPull": "rabix/js-engine"
-                            }
-                        ],
-                        "id": "#cwl-js-engine"
-                    },
-                    {
-                        "class": "CreateFileRequirement",
-                        "fileDef": [
-                            {
-                                "filename": "sbg_fastq_quality_scale_adjuster.py",
-                                "fileContent": "\"\"\"\nUsage:\n    sbg_fastq_quality_scale_adjuster.py --fastq FILE\n\nOptions:\n    -h, --help          Show this message.\n\n    -f, --fastq FILE    Input FASTQ file.\n\n\"\"\"\n\nfrom docopt import docopt\nimport os\nimport gzip\nimport itertools as it\nimport shutil\nimport sys\nfrom math import log10\nfrom subprocess import Popen\n\n\n\nargs = docopt(__doc__, version='1.0')\n\ninput_file = args['--fastq'] \n\nbase_name = input_file[input_file.rfind('/')+1:input_file.rfind('.') if input_file.rfind('.') != -1 else None]\nr_ext = input_file[input_file.rfind('.')+1:] if input_file.rfind('.') else \"\"\nl_ext = base_name.split('.')[-1].lower()\nif l_ext == 'fastq' or l_ext == 'fq':\n    if not r_ext == 'fastq' and not r_ext == 'fq':\n        base_name = base_name[:base_name.rfind('.')]\noutput_file = base_name + '.std.fastq'\n\n\n\"\"\"input and output names defined above\"\"\"\n\nclass myGzipFile(gzip.GzipFile):\n    def __enter__(self, *args, **kwargs):\n        if self.fileobj is None:\n            raise ValueError(\"I/O operation on closed GzipFile object\")\n        return self\n\n    def __exit__(self, *args, **kwargs):\n        self.close()\n\n\ndef extremes(a, b):\n    if a is False:\n        return b, b\n    return min(a[0], b), max(a[1], b)\n\n\ndef walk_qualities(f, sample_size=1000):\n    for i in xrange(sample_size * 4):\n        try:\n            line = f.next()\n        except StopIteration:\n            return\n        if i % 4 == 3:\n            yield line.rstrip(\"\\n\\r\")\n\n\ndef sniff(path):\n    with open(path, 'rb') as f:\n        gz = f.read(2) == '\\x1f\\x8b'\n    opn = myGzipFile if gz else open\n    with opn(path) as f:\n        return get_scale(*map(ord, reduce(extremes, it.chain(*walk_qualities(f)), False)))\n\n\ndef get_scale(ord_min, ord_max):\n    options = {\n        'illumina13': (64, 105),\n        'illumina15': (66, 105),\n        'sanger': (33, 126),\n        'solexa': (59, 105),\n    }\n    fits = [(k, v) for k, v in options.iteritems() if v[0] <= ord_min and v[1] >= ord_max]\n    if not fits:\n        message = 'Quality scale for range (%s, %s) not found.' % (ord_min, ord_max)\n        raise Exception(message)\n        # Return narrowest range\n    return reduce(lambda a, b: a if a[1][1] - a[1][0] < b[1][1] - b[1][0] else b, fits)[0]\n\ndef qsolexa(x):\n    return chr(int(round(10 * log10(10.0**((ord(x)-64)/10.0)+1))) + 33)\n\n\ndef qillumina13(x):\n    return chr(ord(x) - 31)\n\n\ndef qillumina15(x):\n    return chr(ord(x) - 31) if ord(x)-64 > 2 else chr(33)\n\n\ndef qillumina18(x):\n    return x\n\n\n\"\"\"detect quality scale format\"\"\"\n\nmeta_qual = sniff(input_file)\n\n\n\"\"\"adjust quality scale if needed\"\"\"\n\nif meta_qual == 'illumina13':\n    proc = qillumina13\nelif meta_qual == 'illumina15':\n    proc = qillumina15\nelif meta_qual == 'solexa':\n    proc = qsolexa\nelse:\n    proc = None\n\nif proc == qsolexa: \n    with open(input_file, 'rb') as f:\n        gz = f.read(2) == '\\x1f\\x8b'\n    open_gz = myGzipFile if gz else open\n    with open(output_file, 'w') as out:\n        for i, line in enumerate(open_gz(input_file)):\n            if i % 4 == 3:\n                line = line.strip()\n                converted = ''.join(map(proc, line))\n                out.write(converted + '\\n')\n            else:\n                out.write(line)\n    contents = \"Original fastq quality scale format was \" + meta_qual + \", and is converted to illumina18.\\n\"\nelif proc is not None: #seqtk converter from illumina13-15\n    with open(input_file, 'rb') as f:\n        gz = f.read(2) == '\\x1f\\x8b'\n    f.close()\n    if gz:#gunzip file to temp.fastq\n        temp_file = 'temp.fastq'\n        \n        inF = gzip.GzipFile(input_file, 'rb')\n        outF = file(temp_file, 'wb')\n        \n        newline = ''\n        for lines in inF:\n            outF.write(newline + lines.rstrip('\\n'))\n            newline = '\\n'\n            \n        inF.close()\n        outF.close()\n\n    else:\n        temp_file = input_file\n\n    cmd = ['seqtk','seq','-Q64','-V',temp_file,'>',output_file]\n    with open(output_file, 'w') as out:\n        p = Popen(cmd, stdout = out)\n        p.communicate()\n    contents = \"Original fastq quality scale format was \" + meta_qual + \", and is converted to illumina18.\\n\"\nelse:\n    if input_file.rfind(\".gz\") == len(input_file) - 3:\n        output_file = output_file + \".gz\"\n    #shutil.copyfile(input_file, output_file)\n    #os.symlink(input_file, output_file)\n    os.rename(input_file, output_file)\n    contents = \"Original fastq quality scale format was illumina18. No conversion performed.\\n\"\n\nsys.stderr.write(contents) #Write conversion to error log"
-                            }
-                        ]
-                    }
-                ],
-                "hints": [
-                    {
-                        "class": "sbg:CPURequirement",
-                        "value": 1
-                    },
-                    {
-                        "class": "sbg:MemRequirement",
-                        "value": {
-                            "class": "Expression",
-                            "script": "{\n  if($job.inputs.total_memory){\n    return $job.inputs.total_memory * 1024\n  } else {\n    return 1000\n  }\n}",
-                            "engine": "#cwl-js-engine"
-                        }
-                    },
-                    {
-                        "class": "DockerRequirement",
-                        "dockerPull": "images.sbgenomics.com/bogdang/sbg_quality_scale_adjuster:1.0"
-                    }
-                ],
-                "sbg:publisher": "sbg",
-                "sbg:id": "h-bb060756/h-a0440967/h-5c43f89a/0",
-                "y": 148.12500000000003,
-                "sbg:image_url": null,
-                "sbg:modifiedBy": "bogdang",
-                "sbg:appVersion": [
-                    "sbg:draft-2"
-                ],
-                "sbg:license": "Apache License 2.0",
-                "sbg:latestRevision": 15,
-                "sbg:revisionNotes": "No change",
-                "sbg:revision": 15,
-                "x": -20.000000000000004,
-                "sbg:modifiedOn": 1511876318,
-                "sbg:categories": [
-                    "Converters",
-                    "FASTQ-Processing"
-                ],
-                "sbg:sbgMaintained": false,
-                "sbg:revisionsInfo": [
-                    {
-                        "sbg:revision": 0,
-                        "sbg:modifiedOn": 1470927070,
-                        "sbg:modifiedBy": "vladimirk",
-                        "sbg:revisionNotes": "Copy of bogdang/fastq-quality-converter/sbg-fastq-quality-adjuster/23"
-                    },
-                    {
-                        "sbg:revision": 1,
-                        "sbg:modifiedOn": 1472559664,
-                        "sbg:modifiedBy": "vladimirk",
-                        "sbg:revisionNotes": "Copy of bogdang/fastq-quality-converter/sbg-fastq-quality-adjuster/24"
-                    },
-                    {
-                        "sbg:revision": 2,
-                        "sbg:modifiedOn": 1474546255,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "Copy of bogdang/fastq-quality-converter/sbg-fastq-quality-adjuster/25"
-                    },
-                    {
-                        "sbg:revision": 3,
-                        "sbg:modifiedOn": 1475084132,
-                        "sbg:modifiedBy": "vladimirk",
-                        "sbg:revisionNotes": "'sanger': (33, 74) instead 'sanger': (33, 126)"
-                    },
-                    {
-                        "sbg:revision": 4,
-                        "sbg:modifiedOn": 1475231421,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "sanger 33:92"
-                    },
-                    {
-                        "sbg:revision": 5,
-                        "sbg:modifiedOn": 1475234050,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "seqtk for converting from illumina13-15"
-                    },
-                    {
-                        "sbg:revision": 6,
-                        "sbg:modifiedOn": 1478274820,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "fix for seqtk conversion from .gz files"
-                    },
-                    {
-                        "sbg:revision": 7,
-                        "sbg:modifiedOn": 1478277013,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "Without seqtk"
-                    },
-                    {
-                        "sbg:revision": 8,
-                        "sbg:modifiedOn": 1478300733,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "fix seqtk for .gz files"
-                    },
-                    {
-                        "sbg:revision": 9,
-                        "sbg:modifiedOn": 1481123041,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "Support for files named filename.fq.fastq"
-                    },
-                    {
-                        "sbg:revision": 10,
-                        "sbg:modifiedOn": 1481290093,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "No conversion if sanger or illumina18 quality scale set in metadata"
-                    },
-                    {
-                        "sbg:revision": 11,
-                        "sbg:modifiedOn": 1481448894,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "fix"
-                    },
-                    {
-                        "sbg:revision": 12,
-                        "sbg:modifiedOn": 1495706394,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "Added detection mode and switched to python3"
-                    },
-                    {
-                        "sbg:revision": 13,
-                        "sbg:modifiedOn": 1497438325,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "Revert to rev 11"
-                    },
-                    {
-                        "sbg:revision": 14,
-                        "sbg:modifiedOn": 1511876154,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "Link instead of copy. Output string with detected quality scale."
-                    },
-                    {
-                        "sbg:revision": 15,
-                        "sbg:modifiedOn": 1511876318,
-                        "sbg:modifiedBy": "bogdang",
-                        "sbg:revisionNotes": "No change"
-                    }
-                ],
-                "sbg:project": "bix-demo/sbgtools-demo",
-                "sbg:toolkit": "SBGTools",
-                "sbg:job": {
-                    "allocatedResources": {
-                        "mem": 9216,
-                        "cpu": 1
-                    },
-                    "inputs": {
-                        "fastq": {
-                            "class": "File",
-                            "secondaryFiles": [],
-                            "path": "/path/to/test.1.fastq",
-                            "size": 0,
-                            "metadata": {
-                                "Quality scale": "sanger"
-                            }
-                        },
-                        "used_quality_scale": null,
-                        "total_memory": 9
-                    }
-                },
-                "sbg:createdOn": 1470927070,
-                "sbg:projectName": "SBGTools - Demo New",
-                "sbg:createdBy": "vladimirk",
-                "sbg:contributors": [
-                    "bogdang",
-                    "vladimirk"
-                ],
-                "sbg:validationErrors": [],
-                "sbg:cmdPreview": "python sbg_fastq_quality_scale_adjuster.py  --fastq /path/to/test.1.fastq",
-                "sbg:toolAuthor": "Seven Bridges Genomics"
-            },
-            "label": "SBG FASTQ Quality Adjuster",
-            "scatter": "#SBG_FASTQ_Quality_Adjuster.fastq",
-            "sbg:x": 34.09397888183594,
-            "sbg:y": -108.59964752197266
-        },
         {
             "id": "#Centrifuge_Classifier",
             "inputs": [
@@ -1962,7 +1665,7 @@
                 {
                     "id": "#SBG_Pair_FASTQs_by_Metadata.fastq_list",
                     "source": [
-                        "#SBG_FASTQ_Quality_Adjuster.result"
+                        "#fastq_list"
                     ]
                 }
             ],
@@ -2221,8 +1924,8 @@
                 "sbg:cmdPreview": "echo 'Pairing FASTQs!'"
             },
             "label": "SBG Pair FASTQs by Metadata",
-            "sbg:x": 287.83447265625,
-            "sbg:y": -107.4385757446289
+            "sbg:x": 35.862525939941406,
+            "sbg:y": -108.31485748291016
         },
         {
             "id": "#centrifuge_build",
@@ -4097,6 +3800,18 @@
             "sbg:modifiedBy": "hendrick.san",
             "sbg:modifiedOn": 1598771247,
             "sbg:revisionNotes": "renew"
+        },
+        {
+            "sbg:revision": 7,
+            "sbg:modifiedBy": "hendrick.san",
+            "sbg:modifiedOn": 1603684011,
+            "sbg:revisionNotes": "Pure Centrifuge only"
+        },
+        {
+            "sbg:revision": 8,
+            "sbg:modifiedBy": "hendrick.san",
+            "sbg:modifiedOn": 1603684721,
+            "sbg:revisionNotes": "Centrifuge with paired data tool"
         }
     ],
     "sbg:categories": [
@@ -4117,10 +3832,10 @@
     "sbg:appVersion": [
         "sbg:draft-2"
     ],
-    "sbg:id": "hendrick.san/covid19/rapid-identification-workflow/6",
-    "sbg:revision": 6,
-    "sbg:revisionNotes": "renew",
-    "sbg:modifiedOn": 1598771247,
+    "sbg:id": "hendrick.san/covid19/rapid-identification-workflow/8",
+    "sbg:revision": 8,
+    "sbg:revisionNotes": "Centrifuge with paired data tool",
+    "sbg:modifiedOn": 1603684721,
     "sbg:modifiedBy": "hendrick.san",
     "sbg:createdOn": 1594797894,
     "sbg:createdBy": "hendrick.san",
@@ -4130,7 +3845,7 @@
     "sbg:contributors": [
         "hendrick.san"
     ],
-    "sbg:latestRevision": 6,
+    "sbg:latestRevision": 8,
     "sbg:publisher": "sbg",
-    "sbg:content_hash": "a1db55464c1e34a1d6ec1fa5ec9b78390e0ea76a98138c046864713dfa25f3f0e"
+    "sbg:content_hash": "a7fa2b276b4e35b1754496062340e5cde0247fa15deee4caf7dc7a999e1b9c9ec"
 }
